@@ -478,13 +478,53 @@ function resize(){const w=hdr.offsetWidth,h=hdr.offsetHeight;if(canvas.width===w
 let flakes=[];
 function initFlakes(){
   const w=canvas.width,h=canvas.height;
-  flakes=Array.from({length:34},()=>({x:Math.random()*w,y:Math.random()*h,r:0.8+Math.random()*1.8,
+  flakes=Array.from({length:60},()=>({x:Math.random()*w,y:Math.random()*h,r:0.8+Math.random()*1.8,
     vy:0.2+Math.random()*0.5,drift:(Math.random()-0.5)*0.4,ph:Math.random()*Math.PI*2}));
+}
+/* ---- Liegenbleibender Schnee (Mockup) ---- */
+const COLW=3, PILE_MAX=16, PILE_GAIN=0.55;
+let pile=new Float32Array(0);
+function ensurePile(w){const n=Math.ceil(w/COLW)+2;if(pile.length!==n){const np=new Float32Array(n);np.set(pile.subarray(0,Math.min(n,pile.length)));pile=np;}}
+function addSnow(col,amt){
+  if(col<0||col>=pile.length)return;
+  if(pile[col]<PILE_MAX)pile[col]=Math.min(PILE_MAX,pile[col]+amt);
+}
+function relaxPile(){
+  // Schnee rutscht seitlich ab -> weiche Hügel statt Spitzen
+  for(let i=1;i<pile.length-1;i++){
+    const l=pile[i-1],r=pile[i+1],c=pile[i];
+    if(c-l>1.2){const d=(c-l-1.2)*0.25;pile[i]-=d;pile[i-1]+=d;}
+    if(c-r>1.2){const d=(c-r-1.2)*0.25;pile[i]-=d;pile[i+1]+=d;}
+  }
+}
+function carvePile(cx,feetY,h){
+  // Eisläuferin schiebt den Schnee beiseite
+  const R=16;
+  for(let col=Math.floor((cx-R)/COLW);col<=Math.ceil((cx+R)/COLW);col++){
+    if(col<0||col>=pile.length)continue;
+    if(feetY>h-pile[col]-2&&pile[col]>0.5){
+      const moved=pile[col]*0.18;pile[col]-=moved;
+      addSnow(col+(cx<col*COLW?2:-2),moved*0.5); // Rest landet seitlich
+    }
+  }
+}
+function drawPile(){
+  const w=canvas.width,h=canvas.height;
+  ctx.beginPath();ctx.moveTo(0,h);
+  for(let i=0;i<pile.length;i++){ctx.lineTo(i*COLW,h-pile[i]);}
+  ctx.lineTo(w+COLW,h);ctx.closePath();
+  const g=ctx.createLinearGradient(0,h-PILE_MAX,0,h);
+  g.addColorStop(0,'rgba(255,255,255,0.97)');g.addColorStop(1,'rgba(214,232,246,0.95)');
+  ctx.fillStyle=g;ctx.fill();
 }
 function drawFlakes(){
   const w=canvas.width,h=canvas.height;
   for(const f of flakes){
     f.y+=f.vy;f.ph+=0.02;f.x+=f.drift+Math.sin(f.ph)*0.25;
+    ensurePile(w);
+    const col=Math.floor(f.x/COLW);
+    const top=(col>=0&&col<pile.length)?h-pile[col]:h;
+    if(f.y+f.r>=top){addSnow(col,PILE_GAIN*f.r*0.35);addSnow(col-1,PILE_GAIN*f.r*0.15);addSnow(col+1,PILE_GAIN*f.r*0.15);f.y=-3;f.x=Math.random()*w;continue;}
     if(f.y>h+3){f.y=-3;f.x=Math.random()*w;}
     if(f.x<-3)f.x=w+3;if(f.x>w+3)f.x=-3;
     ctx.beginPath();ctx.arc(f.x,f.y,f.r,0,Math.PI*2);
@@ -656,6 +696,9 @@ function frame(){
   drawTraces();
   drawTree();
   drawFlakes();
+  relaxPile();
+  if(state!=='parked'&&x>-20&&x<w+20)carvePile(x,y+8,h);
+  drawPile();
 
   const curScaleX=(state==='enter_right')?-1:(state==='parked')?1:(state==='spin')?(spinDir<0&&Math.cos(spinAngle)<0?-1:1):scaleX;
   if(ready&&imgR.width){
