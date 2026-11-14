@@ -132,7 +132,7 @@ textarea{resize:vertical;min-height:64px}
     <div class="header-sub">
       <span>Winter 2026 / 2027</span>
       <span class="deadline-badge">Anmeldeschluss 6. Dezember 2026</span>
-      <a class="admin-link" onclick="showPage('admin-login')">Admin &rsaquo;</a>
+      <a class="admin-link" onclick="openAdmin()">Admin &rsaquo;</a>
     </div>
   </div>
 </header>
@@ -214,6 +214,10 @@ textarea{resize:vertical;min-height:64px}
     <h2>&#128274; Admin-Zugang</h2>
     <div class="field" style="margin-bottom:12px"><label>Passwort</label>
       <input type="password" id="admin-pw" placeholder="Passwort eingeben" onkeydown="if(event.key==='Enter')adminLogin()"></div>
+    <div class="check-row on" id="remember-row" onclick="toggleRemember()" style="margin-bottom:14px">
+      <div class="check-box"><svg viewBox="0 0 24 24"><polyline points="4,12 10,18 20,6"></polyline></svg></div>
+      <div class="check-label" style="font-size:13px">Angemeldet bleiben</div>
+    </div>
     <div id="login-error" class="alert alert-error" style="margin-bottom:12px"></div>
     <button class="btn-submit" style="width:100%;background:var(--blue-deep)" onclick="adminLogin()">Anmelden</button>
     <br><br><a onclick="showPage('form')" style="font-size:13px;color:var(--blue-light);cursor:pointer">&larr; Zur&uuml;ck zur Anmeldung</a>
@@ -252,6 +256,7 @@ const DAYS = [
   {key:'d3', tag:'Montag',      datum:'28.12.2026', zeit:'08:00–10:00'},
   {key:'d4', tag:'Mittwoch',  datum:'30.12.2026', zeit:'08:00–10:00'}
 ];
+let rememberChoice=true;
 let sternli=false, haftung=false, verbindlich=false, adminPassword='', adminData=[];
 
 function renderDays(){
@@ -336,17 +341,31 @@ function resetForm(){
   showPage('form');
 }
 
-function adminLogin(){adminPassword=document.getElementById('admin-pw').value;showAlert('login-error','');loadAdmin();}
-function adminLogout(){adminPassword='';document.getElementById('admin-pw').value='';showPage('admin-login');}
+function openAdmin(){
+  let saved=null;try{saved=localStorage.getItem('ecw_admin_remember');}catch(e){}
+  if(saved){adminPassword=saved;rememberChoice=true;loadAdmin();}
+  else{showPage('admin-login');}
+}
+function toggleRemember(){
+  rememberChoice=!rememberChoice;
+  document.getElementById('remember-row').classList.toggle('on', rememberChoice);
+}
+function adminLogin(){
+  adminPassword=document.getElementById('admin-pw').value;
+  rememberChoice=document.getElementById('remember-row').classList.contains('on');
+  showAlert('login-error','');loadAdmin();
+}
+function adminLogout(){adminPassword='';document.getElementById('admin-pw').value='';try{localStorage.removeItem('ecw_admin_remember');}catch(e){}showPage('admin-login');}
 
 async function loadAdmin(){
   document.getElementById('admin-loading').classList.add('show');showAlert('admin-alert','');
   try{
     const json=await gasRequest({action:'admin',password:adminPassword});
     if(!json.success){
-      if(json.error==='Falsches Passwort'){showAlert('login-error','Falsches Passwort.');document.getElementById('admin-loading').classList.remove('show');return;}
+      if(json.error==='Falsches Passwort'){try{localStorage.removeItem('ecw_admin_remember');}catch(e){}showPage('admin-login');showAlert('login-error','Falsches Passwort.');document.getElementById('admin-loading').classList.remove('show');return;}
       showAlert('admin-alert',json.error||'Fehler beim Laden');document.getElementById('admin-loading').classList.remove('show');return;
     }
+    if(rememberChoice){try{localStorage.setItem('ecw_admin_remember',adminPassword);}catch(e){}}else{try{localStorage.removeItem('ecw_admin_remember');}catch(e){}}
     showPage('admin');adminData=json.data||[];renderAdmin();
   }catch(e){showAlert('admin-alert','Verbindungsfehler: '+e.message);}
   document.getElementById('admin-loading').classList.remove('show');
