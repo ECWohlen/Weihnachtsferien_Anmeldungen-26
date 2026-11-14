@@ -250,7 +250,7 @@ const DAYS = [
   {key:'d1', tag:'Montag',      datum:'21.12.2026', zeit:'08:00–10:00'},
   {key:'d2', tag:'Mittwoch',    datum:'23.12.2026', zeit:'08:00–10:00'},
   {key:'d3', tag:'Montag',      datum:'28.12.2026', zeit:'08:00–10:00'},
-  {key:'d4', tag:'Donnerstag',  datum:'31.12.2026', zeit:'08:00–10:00'}
+  {key:'d4', tag:'Mittwoch',  datum:'30.12.2026', zeit:'08:00–10:00'}
 ];
 let sternli=false, haftung=false, verbindlich=false, adminPassword='', adminData=[];
 
@@ -402,7 +402,7 @@ async function deleteEntry(id){
 function exportCSV(){
   if(!adminData.length)return;
   const header=['Nachname','Vorname','Telefon','Email',
-    'Mo 21.12.26','Mi 23.12.26','Mo 28.12.26','Do 31.12.26','Sternlikurs','Bemerkungen','Datum'];
+    'Mo 21.12.26','Mi 23.12.26','Mo 28.12.26','Mi 30.12.26','Sternlikurs','Bemerkungen','Datum'];
   const rows=adminData.map(e=>[
     e.nachname,e.vorname,e.telefon,e.email,
     e.d1,e.d2,e.d3,e.d4,
